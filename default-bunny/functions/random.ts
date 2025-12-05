@@ -1,5 +1,5 @@
 import { DefineFunction, Schema, SlackFunction } from "deno-slack-sdk/mod.ts";
-import roll from "../datastores/cursors.ts";
+import cursors from "../datastores/cursors.ts";
 
 export const nonull = DefineFunction({
   callback_id: "nonull",
@@ -23,11 +23,12 @@ export const nonull = DefineFunction({
 export default SlackFunction(
   nonull,
   async ({ inputs, client }) => {
+    const teamid = "T0266FRGM";
     const pplInTeam = 114824; // will create some way to change
     const get = await client.apps.datastore.get<
-      typeof roll.definition
+      typeof cursors.definition
     >({
-      datastore: roll.name,
+      datastore: cursors.name,
       id: "User",
     });
     if (get.item.rolling) {
@@ -42,9 +43,9 @@ export default SlackFunction(
       const number = Math.round((Math.random()*pplInTeam) + 1);
       let wentthrough = 0;
       await client.apps.datastore.put<
-        typeof roll.definition
+        typeof cursors.definition
       >({
-        datastore: roll.name,
+        datastore: cursors.name,
         item: {
           type: "User",
           cursor: "none",
@@ -58,13 +59,15 @@ export default SlackFunction(
       if (number > 1000) {
         const first = await client.users.list({
           limit: 1000,
+          team_id: teamid,
         });
         wentthrough += 1000;
         let notfound = true;
         let cursor = first.response_metadata?.next_cursor;
-        for (let i = 0; i < 19 && notfound; i++) {
+        for (let i = 0; i < 15 && notfound; i++) {
           const next = await client.users.list({
             limit: 1000,
+            team_id: teamid,
             cursor: cursor,
           });
           wentthrough += 1000;
@@ -77,16 +80,14 @@ export default SlackFunction(
             });
             notfound = false;
             await client.apps.datastore.put<
-              typeof roll.definition
+              typeof cursors.definition
             >({
-              datastore: roll.name,
+              datastore: cursors.name,
               item: {
                 type: "User",
                 cursor: "none",
                 number: 0,
                 wentthrough: 0,
-                channel: "",
-                user: "",
                 rolling: false,
               },
             });
@@ -100,9 +101,9 @@ export default SlackFunction(
           text: `Your number was greater than ${wentthrough}, so to avoid rate limit, waiting for a minute here.`
         });
         await client.apps.datastore.update<
-          typeof roll.definition
+          typeof cursors.definition
         >({
-          datastore: roll.name,
+          datastore: cursors.name,
           item: {
             type: "User",
             cursor: cursor,
@@ -112,6 +113,7 @@ export default SlackFunction(
       } else {
         const first = await client.users.list({
           limit: 1000,
+          team_id: teamid,
         });
         const chosen = first.members[(number-1)].id;
         await client.chat.postMessage({
@@ -119,16 +121,14 @@ export default SlackFunction(
           text: `You have chosen <@${chosen}> with that roll.`,
         });
         await client.apps.datastore.put<
-          typeof roll.definition
+          typeof cursors.definition
         >({
-          datastore: roll.name,
+          datastore: cursors.name,
           item: {
             type: "User",
             cursor: "none",
             number: 0,
             wentthrough: 0,
-            channel: "",
-            user: "",
             rolling: false,
           },
         });

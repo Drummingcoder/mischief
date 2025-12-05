@@ -4,8 +4,8 @@ import random from "../workflows/randomizer.ts";
 
 const sampleTrigger: Trigger<typeof random.definition> = {
   type: TriggerTypes.Shortcut,
-  name: "shadowinitbunny",
-  description: "Initialize the bot's datastores",
+  name: "randomperson",
+  description: "Summon a random person within Hack Club",
   workflow: `#/workflows/${random.definition.callback_id}`,
   inputs: {
     user: {
