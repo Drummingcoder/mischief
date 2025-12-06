@@ -42,14 +42,26 @@ export default SlackFunction(
             team_id: teamid,
             cursor: cursor,
           });
+          const prevWentthrough = wentthrough;
           wentthrough += 1000;
+          const members = next.members;
           if (number < wentthrough) {
-            const index = wentthrough - number;
+            let index = number - prevWentthrough - 1;
+            if (index < 0) index = 0;
+            while (index >= 0 && !(members[index] && members[index].id)) {
+              index--;
+            }
+            if (index < 0) {
+              index = number - prevWentthrough - 1;
+              while (index < members.length && !(members[index] && members[index].id)) {
+                index++;
+              }
+            }
             console.log("index:", index);
             const chosen = next.members[(index-1)].id;
             await client.chat.postMessage({
               channel: channel,
-              text: `You have chosen <@${chosen}> with that roll.`,
+              text: `<@${user}> has chosen <@${chosen}> with that roll.`,
             });
             notfound = false;
             const success = await client.apps.datastore.put<
@@ -90,11 +102,25 @@ export default SlackFunction(
           team_id: teamid,
         });
         console.log("fourth check", first);
-        const chosen = first.members[(number-1)].id;
+        const prevWentthrough = wentthrough;
+        wentthrough += 1000;
+        const members = first.members;
+        let index = number - prevWentthrough - 1;
+        if (index < 0) index = 0;
+        while (index >= 0 && !(members[index] && members[index].id)) {
+          index--;
+        }
+        if (index < 0) {
+          index = number - prevWentthrough - 1;
+          while (index < members.length && !(members[index] && members[index].id)) {
+            index++;
+          }
+        }
+        const chosen = first.members[index].id;
         console.log("fifth check");
         const message = await client.chat.postMessage({
           channel: channel,
-          text: `You have chosen <@${chosen}> with that roll.`,
+          text: `<@${user}> has chosen <@${chosen}> with that roll.`,
         });
         console.log("First: ", first);
         console.log(message);

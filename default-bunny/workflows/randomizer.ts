@@ -1,5 +1,5 @@
 import { DefineWorkflow, Schema } from "deno-slack-sdk/mod.ts";
-import { nonull } from "../functions/random.ts";
+import { nonull } from "../functions/anyrandom.ts";
 
 const random = DefineWorkflow({
   callback_id: "innit",

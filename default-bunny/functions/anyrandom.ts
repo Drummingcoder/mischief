@@ -72,11 +72,14 @@ export default SlackFunction(
           });
           wentthrough += 1000;
           if (number < wentthrough) {
-            const index = wentthrough - number;
+            let index = wentthrough - number;
+            while (! (next.members[(index-1)].id)) {
+              index--;
+            }
             const chosen = next.members[(index-1)].id;
             await client.chat.postMessage({
               channel: inputs.channel,
-              text: `You have chosen <@${chosen}> with that roll.`,
+              text: `<@${inputs.user}> has chosen <@${chosen}> with that roll.`,
             });
             notfound = false;
             await client.apps.datastore.put<
@@ -118,7 +121,7 @@ export default SlackFunction(
         const chosen = first.members[(number-1)].id;
         await client.chat.postMessage({
           channel: inputs.channel,
-          text: `You have chosen <@${chosen}> with that roll.`,
+          text: `<@${inputs.user}> has chosen <@${chosen}> with that roll.`,
         });
         await client.apps.datastore.put<
           typeof cursors.definition
