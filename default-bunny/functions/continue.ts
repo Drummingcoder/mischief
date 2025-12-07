@@ -1,5 +1,6 @@
 import { DefineFunction, SlackFunction } from "deno-slack-sdk/mod.ts";
 import cursors from "../datastores/cursors.ts";
+import people from "../datastores/activeuser.ts";
 
 export const pulling = DefineFunction({
   callback_id: "keepgo",
@@ -33,7 +34,7 @@ export default SlackFunction(
           limit: 1000,
           team_id: teamid,
         });
-        wentthrough += 1000;
+        wentthrough += first.members.length();
         let notfound = true;
         let cursor = first.response_metadata?.next_cursor;
         for (let i = 0; i < 15 && notfound; i++) {
@@ -43,7 +44,7 @@ export default SlackFunction(
             cursor: cursor,
           });
           const prevWentthrough = wentthrough;
-          wentthrough += 1000;
+          wentthrough += next.members.length();
           const members = next.members;
           if (number < wentthrough) {
             let index = number - prevWentthrough - 1;
@@ -103,7 +104,7 @@ export default SlackFunction(
         });
         console.log("fourth check", first);
         const prevWentthrough = wentthrough;
-        wentthrough += 1000;
+        wentthrough += first.members.length();
         const members = first.members;
         let index = number - prevWentthrough - 1;
         if (index < 0) index = 0;
@@ -137,6 +138,164 @@ export default SlackFunction(
           },
         });
       }
+    }
+    const get1 = await client.apps.datastore.get<
+      typeof cursors.definition
+    >({
+      datastore: cursors.name,
+      id: "Initialize",
+    });
+    if (get1.item.rolling) {
+      let number = get1.item.number;
+      let wentthrough = get1.item.wentthrough;
+      const first = await client.users.list({
+        team_id: teamid,
+        limit: 200,
+      });
+      let whotocheck = first;
+      if (get1.item.cursor) {
+        whotocheck = await client.users.list({
+          team_id: teamid,
+          limit: 200,
+          cursor: get1.item.cursor,
+        });
+      }
+      number = first.members.length;
+      let cursor = get1.item.cursor;
+      if (first.response_metadata?.next_cursor) {
+        cursor = first.response_metadata?.next_cursor;
+      } else {
+        cursor = "finished";
+      }
+      
+      for (let i = 0; i < 17; i++) {
+        if (whotocheck.members[wentthrough].deleted == true || whotocheck.members[wentthrough].is_restricted == true) {
+          i--;
+          wentthrough++;
+        } else {
+          wentthrough++;
+          const rep = await client.search.messages({
+            query: `from: @${whotocheck.members[wentthrough].id}`,
+            sort: "timestamp",
+            sort_dir: "desc"
+          });
+          if (rep.messages.matches) {
+            const slackTs = rep.messages.matches[0].ts;
+            const olddate = Math.floor(Number(slackTs) * 1000);
+            const newdate = Date.now();
+            const timeelasped = newdate - olddate;
+            const THIRTY_DAYS_IN_MS = 30 * 24 * 60 * 60 * 1000;
+            if (timeelasped <= THIRTY_DAYS_IN_MS) {
+              const get = await client.apps.datastore.get<
+                typeof people.definition
+              >({
+                datastore: people.name,
+                id: "0",
+              });
+              if (! (get.item.length)) {
+                await client.apps.datastore.put<
+                  typeof people.definition
+                >({
+                  datastore: people.name,
+                  item: {
+                    number: "0",
+                    length: 1,
+                  },
+                });
+                await client.apps.datastore.put<
+                  typeof people.definition
+                >({
+                  datastore: people.name,
+                  item: {
+                    number: "1",
+                    user_id: whotocheck.members[wentthrough].id
+                  },
+                });
+              } else {
+                const num = get.item.length + 1;
+                await client.apps.datastore.put<
+                  typeof people.definition
+                >({
+                  datastore: people.name,
+                  item: {
+                    number: num.toString(),
+                    user_id: whotocheck.members[wentthrough].id
+                  },
+                });
+                await client.apps.datastore.update<
+                  typeof people.definition
+                >({
+                  datastore: people.name,
+                  item: {
+                    number: "0",
+                    length: num,
+                  },
+                });
+              }
+            }
+          }
+        }
+        if (wentthrough == number) {
+          if (cursor == "finished") {
+            await client.chat.postEphemeral({
+              channel: get1.item.channel,
+              user: get1.item.user,
+              text: "finished",
+            });
+            await client.apps.datastore.update<
+              typeof cursors.definition
+            >({
+              datastore: cursors.name,
+              item: {
+                type: "Initialize",
+                cursor: "none",
+                number: 0,
+                wentthrough: 0,
+                rolling: false,
+              },
+            });
+          }
+          wentthrough = 0;
+          const next = await client.users.list({
+            team_id: teamid,
+            limit: 200,
+            cursor: cursor,
+          });
+          number = next.members.length;
+          await client.apps.datastore.update<
+            typeof cursors.definition
+          >({
+            datastore: cursors.name,
+            item: {
+              type: "Initialize",
+              cursor: cursor,
+              number: number,
+              wentthrough: 0,
+            },
+          });
+          whotocheck = next;
+          if (next.response_metadata?.next_cursor) {
+            cursor = next.response_metadata?.next_cursor;
+          } else {
+            cursor = "finished";
+          }
+        }
+      }
+      await client.apps.datastore.update<
+        typeof cursors.definition
+      >({
+        datastore: cursors.name,
+        item: {
+          type: "Initialize",
+          number: number,
+          wentthrough: wentthrough,
+        },
+      });
+      await client.chat.postEphemeral({
+        channel: get1.item.channel,
+        user: get1.item.user,
+        text: "still going",
+      });
     }
     return { outputs: {} };
   },

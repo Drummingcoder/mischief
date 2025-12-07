@@ -1,7 +1,7 @@
 import { DefineFunction, Schema, SlackFunction } from "deno-slack-sdk/mod.ts";
 import cursors from "../datastores/cursors.ts";
 
-export const nonull = DefineFunction({
+export const bruhactive = DefineFunction({
   callback_id: "nonull",
   title: "Get user",
   description: "Time to play around rate limits",
@@ -21,35 +21,35 @@ export const nonull = DefineFunction({
 });
 
 export default SlackFunction(
-  nonull,
+  bruhactive,
   async ({ inputs, client }) => {
     const teamid = "T0266FRGM";
     const pplInTeam = 114824; // will create some way to change
-    const get = await client.apps.datastore.get<
-      typeof cursors.definition
-    >({
-      datastore: cursors.name,
-      id: "User",
-    });
-    if (get.item.rolling) {
-      await client.chat.postEphemeral({
-        channel: inputs.channel,
-        user: inputs.user,
-        text: `Sorry, <@${get.item.user}> is rolling a user right now.`,
-      });
-      return { outputs: {} };
-    }
     const otherget = await client.apps.datastore.get<
       typeof cursors.definition
     >({
       datastore: cursors.name,
-      id: "ActiveUser",
+      id: "User",
     });
     if (otherget.item.rolling) {
       await client.chat.postEphemeral({
         channel: inputs.channel,
         user: inputs.user,
         text: `Sorry, <@${otherget.item.user}> is rolling a user right now.`,
+      });
+      return { outputs: {} };
+    }
+    const get = await client.apps.datastore.get<
+      typeof cursors.definition
+    >({
+      datastore: cursors.name,
+      id: "ActiveUser",
+    });
+    if (get.item.rolling) {
+      await client.chat.postEphemeral({
+        channel: inputs.channel,
+        user: inputs.user,
+        text: `Sorry, <@${get.item.user}> is rolling a user right now.`,
       });
       return { outputs: {} };
     }
@@ -61,7 +61,7 @@ export default SlackFunction(
       >({
         datastore: cursors.name,
         item: {
-          type: "User",
+          type: "ActiveUser",
           cursor: "none",
           number: number,
           wentthrough: wentthrough,
@@ -101,7 +101,7 @@ export default SlackFunction(
             >({
               datastore: cursors.name,
               item: {
-                type: "User",
+                type: "ActiveUser",
                 cursor: "none",
                 number: 0,
                 wentthrough: 0,
@@ -122,7 +122,7 @@ export default SlackFunction(
         >({
           datastore: cursors.name,
           item: {
-            type: "User",
+            type: "ActiveUser",
             cursor: cursor,
             wentthrough: wentthrough,
           },
@@ -132,7 +132,21 @@ export default SlackFunction(
           limit: 1000,
           team_id: teamid,
         });
-        const chosen = first.members[(number-1)].id;
+        const prevWentthrough = 0;
+        const members = first.members;
+        let index = number - prevWentthrough - 1;
+        if (index < 0) index = 0;
+        while (index >= 0 && !(members[index] && members[index].id)) {
+          index--;
+        }
+        if (index < 0) {
+          index = number - prevWentthrough - 1;
+          while (index < members.length && !(members[index] && members[index].id)) {
+            index++;
+          }
+        }
+        const chosen = first.members[index].id;
+        
         await client.chat.postMessage({
           channel: inputs.channel,
           text: `<@${inputs.user}> has chosen <@${chosen}> with that roll.`,
@@ -142,7 +156,7 @@ export default SlackFunction(
         >({
           datastore: cursors.name,
           item: {
-            type: "User",
+            type: "ActiveUser",
             cursor: "none",
             number: 0,
             wentthrough: 0,

@@ -1,12 +1,12 @@
 import type { Trigger } from "deno-slack-sdk/types.ts";
 import { TriggerContextData, TriggerTypes } from "deno-slack-api/mod.ts";
-import randomactive from "../workflows/randomizer_active.ts";
+import initial from "../workflows/initial.ts";
 
-const sampleTrigger: Trigger<typeof randomactive.definition> = {
+const sampleTrigger: Trigger<typeof initial.definition> = {
   type: TriggerTypes.Shortcut,
-  name: "randomactive",
-  description: "Summon a random ACTIVE person within Hack Club",
-  workflow: `#/workflows/${randomactive.definition.callback_id}`,
+  name: "shadowinit",
+  description: "Initialize the active user database",
+  workflow: `#/workflows/${initial.definition.callback_id}`,
   inputs: {
     user: {
       value: TriggerContextData.Shortcut.user_id,

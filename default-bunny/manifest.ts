@@ -10,5 +10,5 @@ export default Manifest({
   workflows: [random, contin],
   outgoingDomains: [],
   datastores: [cursors],
-  botScopes: ["commands","chat:write","chat:write.public","datastore:read", "datastore:write", "users:read", "channels:history", "groups:history"],
+  botScopes: ["commands","chat:write","chat:write.public","datastore:read", "datastore:write", "users:read", "channels:history", "groups:history", "search:read"],
 });
