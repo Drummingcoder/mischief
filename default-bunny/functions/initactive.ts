@@ -83,13 +83,20 @@ export default SlackFunction(
           wentthrough++;
         } else {
           wentthrough++;
-          const rep = await client.search.messages({
-            query: `from: @${whotocheck.members[wentthrough].id}`,
-            sort: "timestamp",
-            sort_dir: "desc"
+          const rep = await client.reactions.list({
+            user: whotocheck.members[wentthrough].id,
+            team_id: teamid,
           });
-          if (rep.messages.matches) {
-            const slackTs = rep.messages.matches[0].ts;
+          console.log(rep);
+          if (rep.items) {
+            let slackTs = "0000000";
+            if (rep.items[0].type == "message") {
+              slackTs = rep.items[0].message.ts;
+            } else if (rep.items[0].comment.type == "file_comment") {
+              slackTs = rep.items[0].comment.timestamp;
+            } else if (rep.items[0].file.created) {
+              slackTs = rep.items[0].file.created;
+            }
             const olddate = Math.floor(Number(slackTs) * 1000);
             const newdate = Date.now();
             const timeelasped = newdate - olddate;

@@ -1,5 +1,5 @@
 import { DefineWorkflow, Schema } from "deno-slack-sdk/mod.ts";
-import { nonull } from "../functions/anyrandom.ts";
+import { bruhactive } from "../functions/activerandom.ts";
 
 const randomactive = DefineWorkflow({
   callback_id: "randactive",
@@ -18,7 +18,7 @@ const randomactive = DefineWorkflow({
   },
 });
 
-randomactive.addStep(nonull, {
+randomactive.addStep(bruhactive, {
   user: randomactive.inputs.user,
   channel: randomactive.inputs.channel,
 });

@@ -180,7 +180,14 @@ export default SlackFunction(
             sort_dir: "desc"
           });
           if (rep.messages.matches) {
-            const slackTs = rep.messages.matches[0].ts;
+            let slackTs = "0000000";
+            if (rep.items[0].type == "message") {
+              slackTs = rep.items[0].message.ts;
+            } else if (rep.items[0].comment.type == "file_comment") {
+              slackTs = rep.items[0].comment.timestamp;
+            } else if (rep.items[0].file.created) {
+              slackTs = rep.items[0].file.created;
+            }
             const olddate = Math.floor(Number(slackTs) * 1000);
             const newdate = Date.now();
             const timeelasped = newdate - olddate;

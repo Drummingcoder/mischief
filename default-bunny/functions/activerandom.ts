@@ -1,11 +1,11 @@
 import { DefineFunction, Schema, SlackFunction } from "deno-slack-sdk/mod.ts";
-import cursors from "../datastores/cursors.ts";
+import people from "../datastores/activeuser.ts";
 
 export const bruhactive = DefineFunction({
-  callback_id: "nonull",
-  title: "Get user",
-  description: "Time to play around rate limits",
-  source_file: "functions/random.ts",
+  callback_id: "activpls",
+  title: "Please show",
+  description: "Waah active people pls",
+  source_file: "functions/activerandom.ts",
   input_parameters: {
     properties: {
       user: {
@@ -23,148 +23,26 @@ export const bruhactive = DefineFunction({
 export default SlackFunction(
   bruhactive,
   async ({ inputs, client }) => {
-    const teamid = "T0266FRGM";
-    const pplInTeam = 114824; // will create some way to change
-    const otherget = await client.apps.datastore.get<
-      typeof cursors.definition
-    >({
-      datastore: cursors.name,
-      id: "User",
-    });
-    if (otherget.item.rolling) {
-      await client.chat.postEphemeral({
-        channel: inputs.channel,
-        user: inputs.user,
-        text: `Sorry, <@${otherget.item.user}> is rolling a user right now.`,
-      });
-      return { outputs: {} };
-    }
     const get = await client.apps.datastore.get<
-      typeof cursors.definition
+      typeof people.definition
     >({
-      datastore: cursors.name,
-      id: "ActiveUser",
+      datastore: people.name,
+      id: "0",
     });
-    if (get.item.rolling) {
-      await client.chat.postEphemeral({
-        channel: inputs.channel,
-        user: inputs.user,
-        text: `Sorry, <@${get.item.user}> is rolling a user right now.`,
-      });
-      return { outputs: {} };
-    }
-    if (inputs.user != "") {
-      const number = Math.round((Math.random()*pplInTeam) + 1);
-      let wentthrough = 0;
-      await client.apps.datastore.put<
-        typeof cursors.definition
-      >({
-        datastore: cursors.name,
-        item: {
-          type: "ActiveUser",
-          cursor: "none",
-          number: number,
-          wentthrough: wentthrough,
-          channel: inputs.channel,
-          user: inputs.user,
-          rolling: true,
-        },
-      });
-      if (number > 1000) {
-        const first = await client.users.list({
-          limit: 1000,
-          team_id: teamid,
-        });
-        wentthrough += first.members.length();
-        let notfound = true;
-        let cursor = first.response_metadata?.next_cursor;
-        for (let i = 0; i < 15 && notfound; i++) {
-          const next = await client.users.list({
-            limit: 1000,
-            team_id: teamid,
-            cursor: cursor,
-          });
-          wentthrough += next.members.length();
-          if (number < wentthrough) {
-            let index = wentthrough - number;
-            while (! (next.members[(index-1)].id)) {
-              index--;
-            }
-            const chosen = next.members[(index-1)].id;
-            await client.chat.postMessage({
-              channel: inputs.channel,
-              text: `<@${inputs.user}> has chosen <@${chosen}> with that roll.`,
-            });
-            notfound = false;
-            await client.apps.datastore.put<
-              typeof cursors.definition
-            >({
-              datastore: cursors.name,
-              item: {
-                type: "ActiveUser",
-                cursor: "none",
-                number: 0,
-                wentthrough: 0,
-                rolling: false,
-              },
-            });
-            return { outputs: {} };
-          }
-          cursor = next.response_metadata?.next_cursor;
-        }
-        await client.chat.postEphemeral({
-          channel: inputs.channel,
-          user: inputs.user,
-          text: `Your number was greater than ${wentthrough}, so to avoid rate limit, waiting for a minute here.`
-        });
-        await client.apps.datastore.update<
-          typeof cursors.definition
-        >({
-          datastore: cursors.name,
-          item: {
-            type: "ActiveUser",
-            cursor: cursor,
-            wentthrough: wentthrough,
-          },
-        });
-      } else {
-        const first = await client.users.list({
-          limit: 1000,
-          team_id: teamid,
-        });
-        const prevWentthrough = 0;
-        const members = first.members;
-        let index = number - prevWentthrough - 1;
-        if (index < 0) index = 0;
-        while (index >= 0 && !(members[index] && members[index].id)) {
-          index--;
-        }
-        if (index < 0) {
-          index = number - prevWentthrough - 1;
-          while (index < members.length && !(members[index] && members[index].id)) {
-            index++;
-          }
-        }
-        const chosen = first.members[index].id;
-        
-        await client.chat.postMessage({
-          channel: inputs.channel,
-          text: `<@${inputs.user}> has chosen <@${chosen}> with that roll.`,
-        });
-        await client.apps.datastore.put<
-          typeof cursors.definition
-        >({
-          datastore: cursors.name,
-          item: {
-            type: "ActiveUser",
-            cursor: "none",
-            number: 0,
-            wentthrough: 0,
-            rolling: false,
-          },
-        });
-      }
-    }
+    const random = Math.random() * (get.item.length) + 1;
+
+    const get1 = await client.apps.datastore.get<
+      typeof people.definition
+    >({
+      datastore: people.name,
+      id: random.toString(),
+    });
+
+    await client.chat.postMessage({
+      channel: inputs.channel,
+      text: `<@${inputs.user}> has chosen <@${get1.item.user_id}> with that roll.`
+    });
+    
     return { outputs: {} };
   },
 );

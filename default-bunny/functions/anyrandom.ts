@@ -5,7 +5,7 @@ export const nonull = DefineFunction({
   callback_id: "nonull",
   title: "Get user",
   description: "Time to play around rate limits",
-  source_file: "functions/random.ts",
+  source_file: "functions/anyrandom.ts",
   input_parameters: {
     properties: {
       user: {
