@@ -83,12 +83,24 @@ export default SlackFunction(
           wentthrough++;
         } else {
           wentthrough++;
-          const rep = await client.reactions.list({
+          let rep = await client.reactions.list({
             user: whotocheck.members[wentthrough].id,
             team_id: teamid,
+            count: 100,
+            limit: 1,
           });
           console.log(rep);
-          if (rep.items) {
+          if (rep.response_metadata?.next_cursor) {
+            rep = await client.reactions.list({
+              user: whotocheck.members[wentthrough].id,
+              team_id: teamid,
+              count: 100,
+              limit: 1,
+              cursor: rep.response_metadata?.next_cursor,
+            });
+          }
+          console.log(rep);
+          if (rep?.items && rep.items.length > 0) {
             let slackTs = "0000000";
             if (rep.items[0].type == "message") {
               slackTs = rep.items[0].message.ts;

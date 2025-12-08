@@ -29,7 +29,7 @@ export default SlackFunction(
       datastore: people.name,
       id: "0",
     });
-    const random = Math.random() * (get.item.length) + 1;
+    const random = Math.floor(Math.random() * (get.item.length) + 1);
 
     const get1 = await client.apps.datastore.get<
       typeof people.definition

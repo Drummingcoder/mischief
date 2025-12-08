@@ -1,6 +1,6 @@
 import { DefineFunction, SlackFunction } from "deno-slack-sdk/mod.ts";
 import cursors from "../datastores/cursors.ts";
-import people from "../datastores/activeuser.ts";
+//import people from "../datastores/activeuser.ts";
 
 export const pulling = DefineFunction({
   callback_id: "keepgo",
@@ -139,7 +139,8 @@ export default SlackFunction(
         });
       }
     }
-    const get1 = await client.apps.datastore.get<
+    
+    /*const get1 = await client.apps.datastore.get<
       typeof cursors.definition
     >({
       datastore: cursors.name,
@@ -153,7 +154,7 @@ export default SlackFunction(
         limit: 200,
       });
       let whotocheck = first;
-      if (get1.item.cursor) {
+      if (get1.item.cursor != "none") {
         whotocheck = await client.users.list({
           team_id: teamid,
           limit: 200,
@@ -168,77 +169,129 @@ export default SlackFunction(
         cursor = "finished";
       }
       
-      for (let i = 0; i < 17; i++) {
-        if (whotocheck.members[wentthrough].deleted == true || whotocheck.members[wentthrough].is_restricted == true) {
+      for (let i = 0; i < 8; i++) {
+        console.log("got here");
+        if (!whotocheck?.members) {
+          continue;
+        }
+        if (wentthrough >= whotocheck.members.length) {
+          if (cursor == "finished") {
+            await client.chat.postEphemeral({
+              channel: get1.item.channel,
+              user: get1.item.user,
+              text: "finished",
+            });
+            await client.apps.datastore.update<
+              typeof cursors.definition
+            >({
+              datastore: cursors.name,
+              item: {
+                type: "Initialize",
+                cursor: "none",
+                number: 0,
+                wentthrough: 0,
+                rolling: false,
+              },
+            });
+          }
+          wentthrough = 0;
+          const next = await client.users.list({
+            team_id: teamid,
+            limit: 200,
+            cursor: cursor,
+          });
+          number = next.members.length;
+          whotocheck = next;
+          if (next.response_metadata?.next_cursor) {
+            cursor = next.response_metadata?.next_cursor;
+          } else {
+            cursor = "finished";
+          }
+          continue;
+        }
+        const currentMember = whotocheck.members[wentthrough];
+        if (currentMember.deleted === true || currentMember.is_restricted === true) {
           i--;
           wentthrough++;
-        } else {
-          wentthrough++;
-          const rep = await client.search.messages({
-            query: `from: @${whotocheck.members[wentthrough].id}`,
-            sort: "timestamp",
-            sort_dir: "desc"
+          continue;
+        }
+        wentthrough++;
+        let rep = await client.reactions.list({
+          user: whotocheck.members[wentthrough].id,
+          team_id: teamid,
+          count: 100,
+          limit: 10,
+        });
+        console.log(rep);
+        if (rep.response_metadata?.next_cursor) {
+          rep = await client.reactions.list({
+            user: whotocheck.members[wentthrough].id,
+            team_id: teamid,
+            count: 100,
+            limit: 10,
+            cursor: rep.response_metadata?.next_cursor,
           });
-          if (rep.messages.matches) {
-            let slackTs = "0000000";
-            if (rep.items[0].type == "message") {
-              slackTs = rep.items[0].message.ts;
-            } else if (rep.items[0].comment.type == "file_comment") {
-              slackTs = rep.items[0].comment.timestamp;
-            } else if (rep.items[0].file.created) {
-              slackTs = rep.items[0].file.created;
-            }
-            const olddate = Math.floor(Number(slackTs) * 1000);
-            const newdate = Date.now();
-            const timeelasped = newdate - olddate;
-            const THIRTY_DAYS_IN_MS = 30 * 24 * 60 * 60 * 1000;
-            if (timeelasped <= THIRTY_DAYS_IN_MS) {
-              const get = await client.apps.datastore.get<
+        }
+        console.log(rep);
+        if (rep?.items && rep.items.length > 0) {
+          let slackTs = "0000000";
+          if (rep.items[0]?.type == "message") {
+            slackTs = rep.items[0].message.ts;
+          } else if (rep.items[0].comment?.type == "file_comment") {
+            slackTs = rep.items[0].comment?.timestamp;
+          } else if (rep.items[0]?.file?.created) {
+            slackTs = rep.items[0].file.created;
+          }
+          const olddate = Math.floor(Number(slackTs) * 1000);
+          const newdate = Date.now();
+          const timeelasped = newdate - olddate;
+          const THIRTY_DAYS_IN_MS = 30 * 24 * 60 * 60 * 1000;
+          if (timeelasped <= THIRTY_DAYS_IN_MS) {
+            const get = await client.apps.datastore.get<
+              typeof people.definition
+            >({
+              datastore: people.name,
+              id: "0",
+            });
+            if (! (get.item.length)) {
+              await client.apps.datastore.put<
                 typeof people.definition
               >({
                 datastore: people.name,
-                id: "0",
+                item: {
+                  number: "0",
+                  length: 1,
+                },
               });
-              if (! (get.item.length)) {
-                await client.apps.datastore.put<
-                  typeof people.definition
-                >({
-                  datastore: people.name,
-                  item: {
-                    number: "0",
-                    length: 1,
-                  },
-                });
-                await client.apps.datastore.put<
-                  typeof people.definition
-                >({
-                  datastore: people.name,
-                  item: {
-                    number: "1",
-                    user_id: whotocheck.members[wentthrough].id
-                  },
-                });
-              } else {
-                const num = get.item.length + 1;
-                await client.apps.datastore.put<
-                  typeof people.definition
-                >({
-                  datastore: people.name,
-                  item: {
-                    number: num.toString(),
-                    user_id: whotocheck.members[wentthrough].id
-                  },
-                });
-                await client.apps.datastore.update<
-                  typeof people.definition
-                >({
-                  datastore: people.name,
-                  item: {
-                    number: "0",
-                    length: num,
-                  },
-                });
-              }
+              await client.apps.datastore.put<
+                typeof people.definition
+              >({
+                datastore: people.name,
+                item: {
+                  number: "1",
+                  user_id: whotocheck.members[wentthrough].id
+                },
+              });
+            } else {
+              const num = get.item.length + 1;
+              await client.apps.datastore.put<
+                typeof people.definition
+              >({
+                datastore: people.name,
+                item: {
+                  number: num.toString(),
+                  user_id: whotocheck.members[wentthrough].id
+                },
+              });
+              await client.apps.datastore.update<
+                typeof people.definition
+              >({
+                datastore: people.name,
+                item: {
+                  number: "0",
+                  length: num,
+                },
+              });
             }
           }
         }
@@ -269,6 +322,7 @@ export default SlackFunction(
             cursor: cursor,
           });
           number = next.members.length;
+          whotocheck = next;
           await client.apps.datastore.update<
             typeof cursors.definition
           >({
@@ -276,11 +330,8 @@ export default SlackFunction(
             item: {
               type: "Initialize",
               cursor: cursor,
-              number: number,
-              wentthrough: 0,
             },
           });
-          whotocheck = next;
           if (next.response_metadata?.next_cursor) {
             cursor = next.response_metadata?.next_cursor;
           } else {
@@ -303,7 +354,7 @@ export default SlackFunction(
         user: get1.item.user,
         text: "still going",
       });
-    }
+    }*/
     return { outputs: {} };
   },
 );
