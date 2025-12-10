@@ -34,7 +34,7 @@ export default SlackFunction(
           limit: 1000,
           team_id: teamid,
         });
-        wentthrough += first.members.length();
+        wentthrough += first.members.length;
         let notfound = true;
         let cursor = first.response_metadata?.next_cursor;
         for (let i = 0; i < 15 && notfound; i++) {
@@ -44,7 +44,7 @@ export default SlackFunction(
             cursor: cursor,
           });
           const prevWentthrough = wentthrough;
-          wentthrough += next.members.length();
+          wentthrough += next.members.length;
           const members = next.members;
           if (number < wentthrough) {
             let index = number - prevWentthrough - 1;
@@ -104,7 +104,7 @@ export default SlackFunction(
         });
         console.log("fourth check", first);
         const prevWentthrough = wentthrough;
-        wentthrough += first.members.length();
+        wentthrough += first.members.length;
         const members = first.members;
         let index = number - prevWentthrough - 1;
         if (index < 0) index = 0;
